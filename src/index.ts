@@ -1,4 +1,5 @@
 import cheerio from "cheerio";
+import { emit } from "process";
 import puppeteer from "puppeteer";
 import Slimbot from "slimbot";
 import { v4 as uuidv4 } from "uuid";
@@ -35,28 +36,25 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
 
   //log into ra
   await page.setRequestInterception(true);
-  page.on('request', interceptedRequest => {
+  const emitter = page.on('request', interceptedRequest => {
     var data = {
       'method': 'POST',
       'postData': 'usernameOrEmail='+process.env.USERNAME+'&password='+process.env.PASSWORD
     };
-        interceptedRequest.continue(data);
+    interceptedRequest.continue(data);
     }
   );
   await page.goto("	https://auth.ra.co/api/v1/login");
-
-  page.on('request', () => {});
+  //only need to log in once
+  emitter.off;
 
   await page.goto(url, {waitUntil: 'networkidle2'});
-
   const data = await page.content();
+
   const $ = cheerio.load(data);
-  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map(() => {
-    return $(this)?.attr('class')?.indexOf('onsale') !== -1;
-  }).get();
+  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map(() => $(this)?.attr('class')?.indexOf('onsale') !== -1).get();
 
   return results.some(x => x);
-  
 };
 
 const startBot = () => {
@@ -88,7 +86,6 @@ const startBot = () => {
 
       StupidStorage[id] = {
         chatId: chat.id,
-        timer,
         status: "pending",
       };
 
@@ -104,7 +101,7 @@ const startBot = () => {
         chat.id,
         `Requests will be cancelled after a week automatically.`
       );
-    } else if (text.indexOf("/cancel") !== -1) {
+    /*} else if (text.indexOf("/cancel") !== -1) {
       const [, id] = text.split(" ");
       const item = StupidStorage[id];
       if (item && item.interval && item.status === "pending") {
@@ -115,7 +112,7 @@ const startBot = () => {
           status: "cancelled",
         };
         slimbot.sendMessage(item.chatId, "Cancelled your request! Thanks.");
-      }
+      }*/
     } else if (text.indexOf("/status") !== -1) {
       const [, id] = text.split(" ");
       const item = StupidStorage[id];

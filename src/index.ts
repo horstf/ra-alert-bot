@@ -17,7 +17,7 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
 
-  // set headers and user agent so seem natural :)
+  // set headers and user agent to seem natural :)
   await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:94.0) Gecko/20100101 Firefox/94.0")
   await page.setExtraHTTPHeaders({
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8", 

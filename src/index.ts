@@ -95,7 +95,7 @@ const startBot = () => {
 
       slimbot.sendMessage(
         chat.id,
-        `Alright! I'll let you know when tickets are available.`
+        `Alright! I'll let you know when tickets for event ${eventID} are available.`
       );
       slimbot.sendMessage(
         chat.id,

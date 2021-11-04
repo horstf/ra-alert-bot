@@ -14,6 +14,10 @@ const isUrl = (maybeUrl: string): boolean => {
   return maybeUrl.indexOf("http") !== -1 || maybeUrl.indexOf("https") !== -1;
 };
 
+const getEventId = (url: string): string => {
+  return url.match(/\d{7}/)[0];
+}
+
 const getAvailableTickets = async (url: string): Promise<boolean> => {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -64,8 +68,9 @@ const startBot = () => {
     const { text, chat } = message;
     if (text.indexOf("/watch") !== -1) {
       const [, urlOrId] = text.split(" ");
-      const url = isUrl(urlOrId) ? urlOrId : baseURL + "/widget/event/" + urlOrId + '/embedtickets';
-      const buyUrl = isUrl(urlOrId) ? urlOrId : baseURL + "/events/" + urlOrId;
+      const eventID = isUrl(urlOrId) ? getEventId(urlOrId) : urlOrId
+      const url = baseURL + "/widget/event/" + eventID + '/embedtickets';
+      const buyUrl = baseURL + "/events/" + eventID;
 
       const timer = async () => {
         if (await getAvailableTickets(url)) {

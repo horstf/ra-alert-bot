@@ -1,12 +1,11 @@
-import axios from "axios";
 import cheerio from "cheerio";
-//@ts-ignore
+import puppeteer from "puppeteer";
 import Slimbot from "slimbot";
 import { v4 as uuidv4 } from "uuid";
 
 require('dotenv').config()
 
-const baseURL = "https://www.residentadvisor.net";
+const baseURL = "https://www.ra.co";
 
 const StupidStorage: any = {};
 
@@ -15,18 +14,52 @@ const isUrl = (maybeUrl: string): boolean => {
 };
 
 const getAvailableTickets = async (url: string): Promise<boolean> => {
-  const { data } = await axios.get(url);
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
 
-  const $ = cheerio.load(data);
-  const el = $("li[id=tickets]").html();
+  // set headers and user agent so seem natural :)
+  await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:94.0) Gecko/20100101 Firefox/94.0")
+  await page.setExtraHTTPHeaders({
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8", 
+    "Accept-Encoding": "gzip, deflate, br", 
+    "Accept-Language": "de,en-US;q=0.7,en;q=0.3", 
+    "Dnt": "1", 
+    "Referer": "https://www.google.com/", 
+    "Sec-Fetch-Dest": "document", 
+    "Sec-Fetch-Mode": "navigate", 
+    "Sec-Fetch-Site": "cross-site", 
+    "Sec-Fetch-User": "?1", 
+    "Upgrade-Insecure-Requests": "1", 
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:94.0) Gecko/20100101 Firefox/94.0", 
+  })
 
-  for (const line of el!.split("\n")) {
-    if (line.indexOf("onsale") !== -1) {
-      return true;
+  //log into ra
+  await page.setRequestInterception(true);
+  page.on('request', interceptedRequest => {
+    var data = {
+      'method': 'POST',
+      'postData': 'usernameOrEmail='+process.env.USERNAME+'&password='+process.env.PASSWORD
+    };
+        interceptedRequest.continue(data);
     }
-  }
+  );
+  await page.goto("	https://auth.ra.co/api/v1/login");
 
-  return false;
+  page.on('request', () => {});
+
+  await page.goto(url, {waitUntil: 'networkidle2'});
+
+  const data = await page.content();
+  const $ = cheerio.load(data);
+  let val = false;
+  $('ul[data-ticket-info-selector-id="tickets-info"] li').map(function(i, elm) {
+    if ($(this)?.attr('class')?.indexOf('onsale') !== -1) {
+      val = true;
+    }
+  });
+
+  return val;
+  
 };
 
 const startBot = () => {
@@ -36,25 +69,29 @@ const startBot = () => {
     const { text, chat } = message;
     if (text.indexOf("/watch") !== -1) {
       const [, urlOrId] = text.split(" ");
-      const url = isUrl(urlOrId) ? urlOrId : baseURL + "/events/" + urlOrId;
+      const url = isUrl(urlOrId) ? urlOrId : baseURL + "/widget/event/" + urlOrId + '/embedtickets';
+      const buyUrl = isUrl(urlOrId) ? urlOrId : baseURL + "/events/" + urlOrId;
 
-      const interval = setInterval(async () => {
+      const timer = async () => {
         if (await getAvailableTickets(url)) {
-          clearInterval(interval);
           slimbot.sendMessage(
             chat.id,
-            `Tickets are available! Go to ${url} to purchase.`
+            `Tickets are available! Go to ${buyUrl} to purchase.`
           );
         } else {
-          console.log(`Tickets for ${url} not yet available.`);
+          //wait between 1 and 6 seconds
+          const timeout = 1000 + Math.floor(Math.random() * (5000 - 1000 + 1) + 1000)
+          console.log(`Tickets for ${buyUrl} not yet available. Waiting for ` + timeout/1000 + ' seconds.');
+          setTimeout(timer, timeout);
         }
-      }, 3000);
+      }
+      timer();
 
-      const id = uuidv4();
+      const id = uuidv4().slice(uuidv4().length-4);
 
       StupidStorage[id] = {
         chatId: chat.id,
-        interval,
+        timer,
         status: "pending",
       };
 

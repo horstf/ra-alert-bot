@@ -56,8 +56,7 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
   const data = await page.content();
 
   const $ = cheerio.load(data);
-  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map(() => $(this)?.attr('class')?.indexOf('onsale') !== -1).get();
-
+  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map((i, elem) => {return elem.attribs.class.includes('onsale')}).get();
   return results.some(x => x);
 };
 
@@ -72,27 +71,27 @@ const startBot = () => {
       const url = baseURL + "/widget/event/" + eventID + '/embedtickets';
       const buyUrl = baseURL + "/events/" + eventID;
 
-      const timer = async () => {
-        if (await getAvailableTickets(url)) {
-          slimbot.sendMessage(
-            chat.id,
-            `Tickets are available! Go to ${buyUrl} to purchase.`
-          );
-        } else {
-          //wait between 1 and 6 seconds
-          const timeout = 1000 + Math.floor(Math.random() * (5000 - 1000 + 1) + 1000)
-          console.log(`Tickets for ${buyUrl} not yet available. Waiting for ` + timeout/1000 + ' seconds.');
-          setTimeout(timer, timeout);
-        }
-      }
-      timer();
-
       const id = uuidv4().slice(uuidv4().length-4);
 
       StupidStorage[id] = {
         chatId: chat.id,
         status: "pending",
       };
+
+      const timer = async (id: string) => {
+        if (await getAvailableTickets(url)) {
+          slimbot.sendMessage(
+            chat.id,
+            `Tickets are available! Go to ${buyUrl} to purchase.`
+          );
+        } else if (StupidStorage[id].status === "pending") {
+          //wait between 1 and 6 seconds
+          const timeout = 1000 + Math.floor(Math.random() * (5000 - 1000 + 1) + 1000)
+          console.log(`Tickets for ${buyUrl} not yet available. Waiting for ` + timeout/1000 + ' seconds.');
+          setTimeout(() => timer(id), timeout);
+        }
+      }
+      timer(id);
 
       slimbot.sendMessage(
         chat.id,
@@ -106,18 +105,17 @@ const startBot = () => {
         chat.id,
         `Requests will be cancelled after a week automatically.`
       );
-    /*} else if (text.indexOf("/cancel") !== -1) {
+    } else if (text.indexOf("/cancel") !== -1) {
       const [, id] = text.split(" ");
       const item = StupidStorage[id];
-      if (item && item.interval && item.status === "pending") {
-        clearInterval(item.interval);
+      if (item && item.status === "pending") {
         StupidStorage[String(id)] = {
           chatId: item.chatId,
-          interval: null,
           status: "cancelled",
         };
+        console.log(JSON.stringify(item));
         slimbot.sendMessage(item.chatId, "Cancelled your request! Thanks.");
-      }*/
+      }
     } else if (text.indexOf("/status") !== -1) {
       const [, id] = text.split(" ");
       const item = StupidStorage[id];

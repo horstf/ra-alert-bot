@@ -51,14 +51,11 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
 
   const data = await page.content();
   const $ = cheerio.load(data);
-  let val = false;
-  $('ul[data-ticket-info-selector-id="tickets-info"] li').map(function(i, elm) {
-    if ($(this)?.attr('class')?.indexOf('onsale') !== -1) {
-      val = true;
-    }
-  });
+  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map(() => {
+    return $(this)?.attr('class')?.indexOf('onsale') !== -1;
+  }).get();
 
-  return val;
+  return results.some(x => x);
   
 };
 

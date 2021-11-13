@@ -1,5 +1,4 @@
 import cheerio from "cheerio";
-import { emit } from "process";
 import puppeteer from "puppeteer";
 import Slimbot from "slimbot";
 import { v4 as uuidv4 } from "uuid";
@@ -19,6 +18,9 @@ const getEventId = (url: string): string => {
 }
 
 const getAvailableTickets = async (url: string): Promise<boolean> => {
+
+  let data;
+  try {
   const browser = await puppeteer.launch({
     headless: true,
     args: [
@@ -59,7 +61,11 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
   emitter.off;
 
   await page.goto(url, {waitUntil: 'networkidle2'});
-  const data = await page.content();
+  data = await page.content();
+  } catch (error) {
+    console.log(JSON.stringify(error))
+    return false;
+  }
 
   const $ = cheerio.load(data);
   let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map((i, elem) => {return elem.attribs.class.includes('onsale')}).get();

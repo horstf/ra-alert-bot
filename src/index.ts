@@ -28,7 +28,10 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
     "--disable-gpu",
     ]
   });
+
   const page = await browser.newPage();
+
+  page.setDefaultNavigationTimeout(10000);
 
   // set headers and user agent to seem natural :)
   await page.setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:94.0) Gecko/20100101 Firefox/94.0")
@@ -62,13 +65,17 @@ const getAvailableTickets = async (url: string): Promise<boolean> => {
 
   await page.goto(url, {waitUntil: 'networkidle2'});
   data = await page.content();
+
+  await page.close();
+  await browser.close();
+
   } catch (error) {
     console.log(JSON.stringify(error))
     return false;
   }
 
   const $ = cheerio.load(data);
-  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map((i, elem) => {return elem.attribs.class.includes('onsale')}).get();
+  let results: boolean[] = $('ul[data-ticket-info-selector-id="tickets-info"] li').map((i, elem) => elem.attribs.class.includes('onsale')).get();
   return results.some(x => x);
 };
 

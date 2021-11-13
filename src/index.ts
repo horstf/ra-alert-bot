@@ -19,7 +19,13 @@ const getEventId = (url: string): string => {
 }
 
 const getAvailableTickets = async (url: string): Promise<boolean> => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+    "--no-sandbox",
+    "--disable-gpu",
+    ]
+  });
   const page = await browser.newPage();
 
   // set headers and user agent to seem natural :)

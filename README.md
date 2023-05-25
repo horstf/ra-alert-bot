@@ -8,4 +8,4 @@ resale.
 Currently I've only deployed this for personal use. But I published the source
 so you can run your own if you need something like this ;-)
 
-Add your BOT_TOKEN, USERNAME and PASSWORD in /.env to get started.
+Add your BOT_TOKEN and resident advisor scraping USERNAME and PASSWORD in /.env to get started.
